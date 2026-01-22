@@ -91,10 +91,14 @@ pipeline {
         script {
             dir('/var/lib/jenkins/workspace/devops-project/ansible') {
                 sh '''
-                  echo "### GENERATING INVENTORY ###"
-                  sed "s/DOCKER_HOST_IP/${env.DOCKER_IP}/g" inventory_template.ini > inventory.ini
-                  sed -i "s/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g" inventory.ini
-                  echo "### FINAL INVENTORY ###"
+                  echo "🧹 Removing old inventory"
+                  rm -f inventory.ini
+
+                  echo "📝 Generating new inventory"
+                  sed "s/DOCKER_HOST_IP/$DOCKER_IP/g" inventory_template.ini > inventory.ini
+                  sed -i "s/ANSIBLE_SLAVE_IP/$PYTHON_IP/g" inventory.ini
+
+                  echo "✅ FINAL INVENTORY:"
                   cat inventory.ini
                 '''
             }
