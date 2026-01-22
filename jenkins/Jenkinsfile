@@ -1,145 +1,240 @@
-parameters {
-    choice(
-        name: 'ACTION',
-        choices: ['apply', 'destroy'],
-        description: 'Apply infrastructure or destroy it'
-    )
-}
-
 pipeline {
     agent any
-
+    
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
         GITHUB_REPO = 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
     }
-
+    
     stages {
-
-        stage('Clone Repository') {
+        stage('Verify AWS Credentials') {
             steps {
-                echo '=== Cloning GitHub Repository ==='
-                sh 'rm -rf /var/lib/jenkins/workspace/devops-project'
-                sh "git clone ${GITHUB_REPO} /var/lib/jenkins/workspace/devops-project"
-            }
-        }
-
-        stage('Terraform Init') {
-            steps {
-                echo '=== Initializing Terraform ==='
-                dir('/var/lib/jenkins/workspace/devops-project/terraform') {
-                    sh 'terraform init -upgrade'
+                script {
+                    echo '=== Verifying AWS Credentials ==='
+                    sh 'aws sts get-caller-identity'
                 }
             }
         }
-
-        stage('Terraform Apply / Destroy') {
+        
+        stage('Clone Repository') {
             steps {
                 script {
+                    echo '=== Cloning GitHub Repository ==='
+                    sh 'rm -rf /var/lib/jenkins/workspace/devops-project'
+                    sh 'git clone ${GITHUB_REPO} /var/lib/jenkins/workspace/devops-project'
+                }
+            }
+        }
+        
+        stage('Terraform Init') {
+            steps {
+                script {
+                    echo '=== Initializing Terraform ==='
                     dir('/var/lib/jenkins/workspace/devops-project/terraform') {
-                        if (params.ACTION == 'destroy') {
-                            echo '🔥 Destroying AWS Infrastructure'
-                            sh 'terraform destroy -auto-approve'
-                        } else {
-                            echo '🚀 Applying AWS Infrastructure'
-                            sh 'terraform apply -auto-approve'
-                        }
+                        sh 'terraform init -upgrade'
                     }
                 }
             }
         }
-
-        stage('Wait for Instances') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-            steps {
-                echo '=== Waiting for instances ==='
-                sleep(time: 90, unit: 'SECONDS')
-            }
-        }
-
-        stage('Get IPs') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
+        
+        stage('Terraform Apply') {
             steps {
                 script {
+                    echo '=== Creating AWS Infrastructure ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/terraform') {
+                        sh 'terraform apply -auto-approve'
+                    }
+                }
+            }
+        }
+        
+        stage('Get Instance IPs') {
+            steps {
+                script {
+                    echo '=== Retrieving EC2 Instance IPs ==='
                     dir('/var/lib/jenkins/workspace/devops-project/terraform') {
                         env.DOCKER_IP = sh(
                             script: 'terraform output -raw docker_host_public_ip',
                             returnStdout: true
                         ).trim()
-
                         env.PYTHON_IP = sh(
                             script: 'terraform output -raw ansible_slave_public_ip',
                             returnStdout: true
                         ).trim()
-
-                        echo "Docker Host: ${env.DOCKER_IP}"
-                        echo "Python Host: ${env.PYTHON_IP}"
+                        
+                        echo "🐳 Docker Host IP: ${env.DOCKER_IP}"
+                        echo "🐍 Python Host IP: ${env.PYTHON_IP}"
                     }
                 }
             }
         }
-
-        stage('Create Inventory') {
-    when {
-        expression { params.ACTION == 'apply' }
-    }
-    steps {
-        script {
-            dir('/var/lib/jenkins/workspace/devops-project/ansible') {
-                sh '''
-                  echo "🧹 Removing old inventory"
-                  rm -f inventory.ini
-
-                  echo "📝 Generating new inventory"
-                  sed "s/DOCKER_HOST_IP/$DOCKER_IP/g" inventory_template.ini > inventory.ini
-                  sed -i "s/ANSIBLE_SLAVE_IP/$PYTHON_IP/g" inventory.ini
-
-                  echo "✅ FINAL INVENTORY:"
-                  cat inventory.ini
-                '''
-            }
-        }
-    }
-}
-        stage('Deploy Docker App') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
+        
+        stage('Wait for Instances') {
             steps {
-                dir('/var/lib/jenkins/workspace/devops-project/ansible') {
-                    sh 'ansible-playbook -i inventory.ini deploy_docker_app.yml --private-key ~/.ssh/ansible-class.pem'
+                script {
+                    echo '=== Waiting for EC2 instances to initialize ==='
+                    sleep(time: 90, unit: 'SECONDS')
                 }
             }
         }
-
-        stage('Deploy Python App') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
+        
+        stage('Create Ansible Inventory') {
             steps {
-                dir('/var/lib/jenkins/workspace/devops-project/ansible') {
-                    sh 'ansible-playbook -i inventory.ini deploy_python_app.yml --private-key ~/.ssh/ansible-class.pem'
+                script {
+                    echo '=== Creating Ansible Inventory ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh """
+                            sed 's/DOCKER_HOST_IP/${env.DOCKER_IP}/g' inventory_template.ini > inventory.ini
+                            sed -i 's/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g' inventory.ini
+                            echo "Generated Inventory:"
+                            cat inventory.ini
+                        """
+                    }
                 }
             }
         }
-
+        
+        stage('Test SSH Connectivity') {
+            steps {
+                script {
+                    echo '=== Testing SSH Connectivity ==='
+                    retry(5) {
+                        sh """
+                            echo "Testing Docker Host..."
+                            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i /var/lib/jenkins/.ssh/devops-key.pem ec2-user@${env.DOCKER_IP} 'echo "✅ Docker host connected"'
+                            
+                            echo "Testing Python Host..."
+                            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i /var/lib/jenkins/.ssh/devops-key.pem ec2-user@${env.PYTHON_IP} 'echo "✅ Python host connected"'
+                        """
+                        sleep(time: 10, unit: 'SECONDS')
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Ansible Connectivity') {
+            steps {
+                script {
+                    echo '=== Verifying Ansible Can Reach All Hosts ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        retry(3) {
+                            sh 'ansible all -i inventory.ini -m ping'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Portfolio Website') {
+            steps {
+                script {
+                    echo '=== Deploying UI/UX Portfolio Website ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh 'ansible-playbook -i inventory.ini deploy_docker_app.yml -v'
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Recipe App') {
+            steps {
+                script {
+                    echo '=== Deploying Food Recipe Application ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh 'ansible-playbook -i inventory.ini deploy_python_app.yml -v'
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Deployments') {
+            steps {
+                script {
+                    echo '=== Verifying Both Applications ==='
+                    
+                    sh """
+                        echo "Testing Portfolio Website..."
+                        curl -s -o /dev/null -w "HTTP Status: %{http_code}\\n" http://${env.DOCKER_IP}/ || echo "❌ Portfolio check failed"
+                    """
+                    
+                    sh """
+                        echo "Testing Recipe App..."
+                        curl -s -o /dev/null -w "HTTP Status: %{http_code}\\n" http://${env.PYTHON_IP}:5000/ || echo "❌ Recipe app check failed"
+                    """
+                }
+            }
+        }
+        
         stage('Display URLs') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
             steps {
+                script {
+                    echo """
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║            ✅  DEPLOYMENT SUCCESSFUL!                    ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+
+🎨 UI/UX PORTFOLIO WEBSITE:
+   👉 http://${env.DOCKER_IP}
+
+🍛 INDIAN FOOD RECIPE APP:
+   👉 http://${env.PYTHON_IP}:5000
+
+════════════════════════════════════════════════════════════
+                    INFRASTRUCTURE DETAILS
+════════════════════════════════════════════════════════════
+                    """
+                    dir('/var/lib/jenkins/workspace/devops-project/terraform') {
+                        sh 'terraform output'
+                    }
+                    echo '════════════════════════════════════════════════════════════'
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
                 echo """
-==================================================
-✅ DEPLOYMENT SUCCESSFUL!
-==================================================
-🎨 Portfolio: http://${env.DOCKER_IP}
-🍛 Recipe App: http://${env.PYTHON_IP}:5000
-==================================================
-"""
+╔══════════════════════════════════════════════════════════╗
+║   🎉 PIPELINE COMPLETED SUCCESSFULLY!                    ║
+╚══════════════════════════════════════════════════════════╝
+
+📱 Access your applications:
+   🎨 Portfolio: http://${env.DOCKER_IP}
+   🍛 Recipes: http://${env.PYTHON_IP}:5000
+
+🏗️  Infrastructure created with:
+   ✓ Terraform (AWS VPC, EC2, Security Groups)
+   ✓ Docker (Containerized portfolio website)
+   ✓ Ansible (Configuration management)
+   ✓ Jenkins (CI/CD automation)
+                """
+            }
+        }
+        failure {
+            script {
+                echo """
+╔══════════════════════════════════════════════════════════╗
+║      ❌ PIPELINE FAILED                                  ║
+╚══════════════════════════════════════════════════════════╝
+
+Common issues to check:
+  - AWS credentials configured correctly
+  - SSH key exists at /var/lib/jenkins/.ssh/devops-key.pem
+  - GitHub repository URL correct
+  - Security groups allow ports 22, 80, 5000
+  - EC2 instances are running
+
+Check the console output above for specific errors.
+                """
+            }
+        }
+        always {
+            script {
+                echo "Pipeline execution completed at: ${new Date()}"
             }
         }
     }
