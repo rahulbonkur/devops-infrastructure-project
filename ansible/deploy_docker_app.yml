@@ -34,7 +34,7 @@
 
     - name: Clone repository
       git:
-        repo: 'https://github.com/YOUR_USERNAME/devops-infrastructure-project.git'
+        repo: 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
         dest: /home/ec2-user/devops-infrastructure-project
         force: yes
 

@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
-        GITHUB_REPO = 'https://github.com/YOUR_USERNAME/devops-infrastructure-project.git'
+        GITHUB_REPO = 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
     }
     
     stages {
