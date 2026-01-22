@@ -30,9 +30,14 @@
         virtualenv: /opt/docker-venv
 
     # 🔥 SWITCH PYTHON AFTER VENV EXISTS
+        # 🔥 SWITCH PYTHON AFTER VENV EXISTS
     - name: Switch Ansible to use venv Python
       set_fact:
         ansible_python_interpreter: /opt/docker-venv/bin/python
+
+    - name: Force Docker to use Unix socket
+      set_fact:
+        docker_host: "unix:///var/run/docker.sock"
 
     - name: Stop existing container
       docker_container:
