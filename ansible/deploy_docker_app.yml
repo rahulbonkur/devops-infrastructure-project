@@ -10,18 +10,13 @@
         state: started
         enabled: yes
 
-    - name: Install Python3 and pip
+    - name: Install Python3, pip, and Docker SDK
       yum:
         name:
           - python3
           - python3-pip
+          - python3-docker
         state: present
-
-    - name: Install Docker Python module
-      pip:
-        name: docker
-        state: present
-        executable: pip3
 
     - name: Stop existing container
       docker_container:
