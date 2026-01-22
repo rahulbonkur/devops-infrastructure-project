@@ -52,7 +52,7 @@ pipeline {
         stage('Wait for EC2 Instances') {
             steps {
                 echo '=== Waiting for instances to boot ==='
-                sleep(time: 90, unit: 'SECONDS')
+                sleep(time: 30, unit: 'SECONDS')
             }
         }
 
