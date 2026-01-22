@@ -4,23 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Indian Food Recipes for Bachelors | Easy Cooking Guide</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Josefin+Sans:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
         :root {
-            --bg: #03040a;
-            --card-bg: rgba(20, 21, 31, 0.6);
-            --primary: #bf5af2;
-            --secondary: #5e5ce6;
-            --accent: #ff375f;
-            --success: #32d74b;
-            --warning: #ffd60a;
-            --text-main: #ffffff;
-            --text-dim: #a1a1aa;
-            --border: rgba(255, 255, 255, 0.08);
-            --glass-border: rgba(255, 255, 255, 0.15);
+            --bg: #1A0909;
+            /* Deep Indian Umber */
+            --maroon: #4A0404;
+            /* Heritage Maroon */
+            --gold: #D4AF37;
+            /* Royal Gold */
+            --gold-light: #F4D03F;
+            --saffron: #FF9933;
+            --cream: #FFFDD0;
+            --text-main: #FFFDD0;
+            --text-dim: #E5D3B3;
+            --glass-bg: rgba(74, 4, 4, 0.5);
+            --border-gold: rgba(212, 175, 55, 0.25);
+            --accent-red: #B22222;
         }
 
         * {
@@ -30,11 +32,15 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Josefin Sans', sans-serif;
             background-color: var(--bg);
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(178, 34, 34, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(212, 175, 55, 0.1) 0%, transparent 40%),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l2.5 10L40 5l-5 10 10 2.5-10 2.5 5 10-10-5-2.5 10-2.5-10-10 5 5-10-10-2.5 10-2.5-5-10 10 5L30 0z' fill='%23d4af37' fill-opacity='0.03'/%3E%3C/svg%3E");
             color: var(--text-main);
             min-height: 100vh;
-            line-height: 1.6;
+            line-height: 1.7;
             overflow-x: hidden;
         }
 
@@ -46,21 +52,8 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background:
-                radial-gradient(circle at 15% 15%, rgba(191, 90, 242, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(94, 92, 230, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 50% 50%, rgba(255, 55, 95, 0.05) 0%, transparent 50%);
-            animation: meshMove 25s ease-in-out infinite alternate;
-        }
-
-        @keyframes meshMove {
-            0% {
-                transform: scale(1) translate(0, 0);
-            }
-
-            100% {
-                transform: scale(1.1) translate(30px, 20px);
-            }
+            background: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M100 0c55.23 0 100 44.77 100 100s-44.77 100-100 100S0 155.23 0 100 44.77 0 100 0zm0 20C55.82 20 20 55.82 20 100s35.82 80 80 80 80-35.82 80-80-35.82-80-80-80z' fill='%234a0404' fill-opacity='0.1'/%3E%3C/svg%3E") repeat;
+            opacity: 0.3;
         }
 
         ::-webkit-scrollbar {
@@ -72,27 +65,44 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(var(--primary), var(--secondary));
+            background: linear-gradient(var(--gold), var(--saffron));
             border-radius: 10px;
         }
 
         .header {
             padding: 120px 20px 100px;
             text-align: center;
-            background: radial-gradient(circle at center, rgba(191, 90, 242, 0.05) 0%, transparent 70%);
+            background: radial-gradient(circle at center, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+            border-bottom: 2px solid var(--gold);
+            position: relative;
+        }
+
+        .header::after {
+            content: "";
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background: var(--gold);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            border: 2px solid var(--maroon);
         }
 
         .header h1 {
-            font-size: clamp(3.5rem, 10vw, 6rem);
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(3rem, 8vw, 5.5rem);
             font-weight: 800;
-            letter-spacing: -0.05em;
-            line-height: 0.9;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
             margin-bottom: 32px;
-            background: linear-gradient(135deg, #fff 20%, var(--primary) 60%, var(--secondary) 100%);
+            color: var(--gold);
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+            background: linear-gradient(135deg, var(--gold-light) 20%, var(--gold) 60%, var(--gold-light) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 40px rgba(191, 90, 242, 0.4));
         }
 
         .header .subtitle {
@@ -109,11 +119,11 @@
             margin: 0 auto;
             position: relative;
             padding: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            background: linear-gradient(90deg, var(--gold), var(--saffron), var(--gold));
             background-size: 200% auto;
             animation: gradientBorder 5s ease infinite;
             border-radius: 24px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(191, 90, 242, 0.2);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
         }
 
         @keyframes gradientBorder {
@@ -147,8 +157,8 @@
             right: 12px;
             top: 50%;
             transform: translateY(-50%);
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            color: white;
+            background: linear-gradient(90deg, var(--gold), var(--saffron));
+            color: var(--maroon);
             border: none;
             padding: 12px 32px;
             border-radius: 16px;
@@ -160,7 +170,7 @@
 
         .search-bar button:hover {
             transform: translateY(-50%) scale(1.05);
-            box-shadow: 0 0 20px var(--primary);
+            box-shadow: 0 0 20px var(--gold);
         }
 
         .container {
@@ -177,19 +187,32 @@
         }
 
         .stat-card {
-            background: var(--card-bg);
+            background: var(--glass-bg);
             backdrop-filter: blur(30px);
-            border: 1px solid var(--border);
+            border: 2px solid var(--border-gold);
             padding: 50px 40px;
             border-radius: 40px;
             text-align: center;
             transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0l2 18h18l-18 2 2 18-18-2-2-18H0l18-2-2-18 18 2z' fill='%23d4af37' fill-opacity='0.05'/%3E%3C/svg%3E");
+            opacity: 0.5;
         }
 
         .stat-card:hover {
             transform: translateY(-15px);
-            border-color: var(--primary);
-            background: rgba(191, 90, 242, 0.05);
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
             box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
         }
 
@@ -203,10 +226,11 @@
         .stat-number {
             font-size: 4rem;
             font-weight: 800;
-            color: #fff;
+            color: var(--gold);
             display: block;
             margin-bottom: 8px;
-            filter: drop-shadow(0 0 25px var(--primary));
+            filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.4));
+            font-family: 'Playfair Display', serif;
         }
 
         .stat-label {
@@ -218,14 +242,25 @@
         }
 
         .category-title {
+            font-family: 'Playfair Display', serif;
             font-size: 3.5rem;
             font-weight: 800;
             margin-bottom: 64px;
-            letter-spacing: -0.04em;
-            background: linear-gradient(90deg, #fff, var(--text-dim));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+            color: var(--gold);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .category-title::before,
+        .category-title::after {
+            content: "";
+            height: 2px;
+            flex-grow: 1;
+            background: linear-gradient(to right, transparent, var(--gold), transparent);
         }
 
         .recipe-grid {
@@ -236,19 +271,19 @@
         }
 
         .recipe-card {
-            background: var(--card-bg);
+            background: var(--glass-bg);
             backdrop-filter: blur(30px);
-            border: 1px solid var(--border);
-            border-radius: 56px;
+            border: 2px solid var(--border-gold);
+            border-radius: 40px;
             overflow: hidden;
             transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
             position: relative;
         }
 
         .recipe-card:hover {
-            transform: translateY(-20px) scale(1.03);
-            border-color: var(--primary);
-            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9), 0 0 30px rgba(191, 90, 242, 0.2);
+            transform: translateY(-20px) scale(1.02);
+            border-color: var(--gold);
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9), 0 0 30px rgba(212, 175, 55, 0.2);
         }
 
         .recipe-card::before {
@@ -265,8 +300,21 @@
         .recipe-header {
             padding: 80px 40px;
             text-align: center;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
-            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
+            border-bottom: 2px solid var(--border-gold);
+            position: relative;
+        }
+
+        .recipe-header::after {
+            content: "";
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 16px;
+            background: var(--gold);
+            transform: translateX(-50%) rotate(45deg);
         }
 
         .recipe-emoji {
@@ -282,11 +330,13 @@
         }
 
         .recipe-name {
+            font-family: 'Playfair Display', serif;
             font-size: 2.2rem;
             font-weight: 800;
             margin-bottom: 20px;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+            color: var(--gold);
         }
 
         .recipe-meta {
@@ -298,11 +348,12 @@
         }
 
         .recipe-meta span {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(212, 175, 55, 0.1);
             padding: 8px 20px;
             border-radius: 100px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-gold);
             backdrop-filter: blur(10px);
+            color: var(--cream);
         }
 
         .recipe-body {
@@ -332,22 +383,20 @@
         }
 
         .section-heading {
-            font-size: 1.5rem;
-            font-weight: 800;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            font-weight: 700;
             margin: 50px 0 24px;
-            color: #fff;
+            color: var(--gold);
             display: flex;
             align-items: center;
             gap: 16px;
         }
 
         .section-heading::before {
-            content: "";
-            width: 6px;
-            height: 32px;
-            background: linear-gradient(to bottom, var(--primary), var(--secondary));
-            border-radius: 6px;
-            box-shadow: 0 0 20px var(--primary);
+            content: "◈";
+            color: var(--gold);
+            font-size: 1.2rem;
         }
 
         .ingredients-list li {
@@ -360,10 +409,10 @@
         }
 
         .ingredients-list li::before {
-            content: "✦";
+            content: "✧";
             position: absolute;
             left: 0;
-            color: var(--primary);
+            color: var(--gold);
             font-weight: 900;
         }
 
@@ -382,15 +431,15 @@
             top: -4px;
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 16px;
+            background: linear-gradient(135deg, var(--gold), var(--saffron));
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--maroon);
             font-weight: 800;
             font-size: 1.1rem;
-            box-shadow: 0 10px 20px rgba(191, 90, 242, 0.4);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
         }
 
         .tips-box {
@@ -403,12 +452,13 @@
         }
 
         .tips-box strong {
-            color: var(--warning);
+            color: var(--gold);
             display: block;
             margin-bottom: 12px;
             font-size: 1.1rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
+            font-family: 'Playfair Display', serif;
         }
 
         .tips-box p {
@@ -428,6 +478,7 @@
             color: var(--text-dim);
             font-size: 1.1rem;
             margin-bottom: 16px;
+            font-family: 'Playfair Display', serif;
         }
 
         @keyframes fadeInUp {
@@ -466,8 +517,9 @@
     <!-- Header -->
     <div class="header">
         <div class="header-content">
-            <h1>Indian Food Recipes for Bachelors</h1>
-            <p class="subtitle">Quick, Easy, and Delicious recipes for every bachelor chef!</p>
+            <div style="font-size: 3rem; margin-bottom: 20px;">🪔 � 🪔</div>
+            <h1>Indian Heritage Recipes</h1>
+            <p class="subtitle">Traditional flavors and authentic spices for the modern bachelor chef</p>
             <div class="search-bar">
                 <input type="text" id="searchInput" placeholder="Search recipes by name, category, or ingredients..."
                     onkeyup="searchRecipes()">
@@ -589,8 +641,9 @@
             revealObserver.observe(el);
         });
 
-        console.log('🍛 Vibrant Recipe Site Loaded Successfully!');
+        console.log('🪔 Indian Heritage Recipe Site Loaded Successfully!');
     </script>
 </body>
 
 </html>
+HTMLEOF
