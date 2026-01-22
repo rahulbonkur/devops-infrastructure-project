@@ -1,9 +1,10 @@
----
 - name: Deploy Python Food Recipe App
   hosts: ansible_slave
   become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
-    - name: Install packages
+    - name: Install required packages
       yum:
         name:
           - python3
@@ -11,11 +12,11 @@
           - git
         state: present
 
-    - name: Stop existing app
+    - name: Stop existing application
       shell: pkill -f "gunicorn.*app:app" || true
       ignore_errors: yes
 
-    - name: Remove old service
+    - name: Remove old systemd service
       file:
         path: /etc/systemd/system/recipe-app.service
         state: absent
@@ -31,17 +32,17 @@
         dest: /home/ec2-user/devops-infrastructure-project
         force: yes
 
-    - name: Install dependencies
+    - name: Install Python dependencies
       pip:
         requirements: /home/ec2-user/devops-infrastructure-project/recipe-app/requirements.txt
         executable: pip3
 
-    - name: Create systemd service
+    - name: Create systemd service file
       copy:
         dest: /etc/systemd/system/recipe-app.service
         content: |
           [Unit]
-          Description=Recipe App
+          Description=Indian Food Recipe App
           After=network.target
 
           [Service]
@@ -53,26 +54,36 @@
           [Install]
           WantedBy=multi-user.target
 
-    - name: Reload systemd
+    - name: Reload systemd daemon
       systemd:
         daemon_reload: yes
 
-    - name: Start service
+    - name: Start and enable recipe app service
       systemd:
         name: recipe-app
         state: restarted
         enabled: yes
 
-    - name: Wait for app
+    - name: Wait for application to start
       wait_for:
         port: 5000
         delay: 5
+        timeout: 30
 
-    - name: Check status
+    - name: Check service status
       systemd:
         name: recipe-app
-      register: result
+      register: service_status
 
-    - name: Show status
+    - name: Show service status
       debug:
-        msg: "Service is {{ result.status.ActiveState }}"
+        msg: "Service is {{ service_status.status.ActiveState }}"
+
+    - name: Test app locally
+      shell: curl -s http://localhost:5000 | head -20
+      register: curl_output
+      ignore_errors: yes
+
+    - name: Show app test
+      debug:
+        var: curl_output.stdout_lines
