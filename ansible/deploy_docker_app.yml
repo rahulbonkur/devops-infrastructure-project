@@ -1,9 +1,8 @@
----
 - name: Deploy Dockerized UI/UX Portfolio Website
   hosts: docker_host
   become: yes
-  gather_facts: yes
-
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Ensure Docker is running
       service:
@@ -11,44 +10,44 @@
         state: started
         enabled: yes
 
-    - name: Install Python3, pip, and venv tools
-      dnf:
-        name:
-          - python3
-          - python3-pip
-          - python3-virtualenv
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    - name: Install pip3
+      yum:
+        name: python3-pip
         state: present
 
-    - name: Create virtualenv for Docker SDK
-      command: python3 -m venv /opt/docker-venv
-      args:
-        creates: /opt/docker-venv/bin/python
-
-    - name: Install Docker SDK inside venv
+    - name: Install Docker SDK for Python
       pip:
         name: docker
-        virtualenv: /opt/docker-venv
+        executable: pip3
+        state: present
 
-    # 🔥 SWITCH PYTHON AFTER VENV EXISTS
-        # 🔥 SWITCH PYTHON AFTER VENV EXISTS
-    - name: Switch Ansible to use venv Python
-      set_fact:
-        ansible_python_interpreter: /opt/docker-venv/bin/python
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted
 
-    - name: Force Docker to use Unix socket
-      set_fact:
-        docker_host: "unix:///var/run/docker.sock"
+    - name: Wait for Docker socket
+      wait_for:
+        path: /var/run/docker.sock
+        state: present
+        timeout: 30
 
-    - name: Stop existing container
-      docker_container:
-        name: portfolio-website
-        state: absent
+    - name: Stop existing container (using shell)
+      shell: docker stop portfolio-website || true
       ignore_errors: yes
 
-    - name: Remove existing image
-      docker_image:
-        name: portfolio-website
-        state: absent
+    - name: Remove existing container (using shell)
+      shell: docker rm portfolio-website || true
+      ignore_errors: yes
+
+    - name: Remove existing image (using shell)
+      shell: docker rmi portfolio-website || true
       ignore_errors: yes
 
     - name: Remove existing directory
@@ -62,27 +61,42 @@
         dest: /home/ec2-user/devops-infrastructure-project
         force: yes
 
-    - name: Build Docker image
-      docker_image:
-        name: portfolio-website
-        build:
-          path: /home/ec2-user/devops-infrastructure-project/portfolio-website
-        source: build
+    - name: Build Docker image (using shell)
+      shell: |
+        cd /home/ec2-user/devops-infrastructure-project/portfolio-website
+        docker build -t portfolio-website .
+      register: build_output
 
-    - name: Run Docker container
-      docker_container:
-        name: portfolio-website
-        image: portfolio-website
-        state: started
-        restart_policy: always
-        ports:
-          - "80:80"
-
-    - name: Verify container
-      docker_container_info:
-        name: portfolio-website
-      register: result
-
-    - name: Show status
+    - name: Show build output
       debug:
-        msg: "Container is {{ result.container.State.Status }}"
+        var: build_output.stdout_lines
+
+    - name: Run Docker container (using shell)
+      shell: |
+        docker run -d \
+          --name portfolio-website \
+          --restart always \
+          -p 80:80 \
+          portfolio-website
+      register: run_output
+
+    - name: Show container ID
+      debug:
+        var: run_output.stdout
+
+    - name: Verify container is running
+      shell: docker ps --filter name=portfolio-website --format "{{.Status}}"
+      register: container_status
+
+    - name: Show container status
+      debug:
+        msg: "Container status: {{ container_status.stdout }}"
+
+    - name: Test website locally
+      shell: curl -s http://localhost | head -10
+      register: curl_output
+      ignore_errors: yes
+
+    - name: Show website test
+      debug:
+        var: curl_output.stdout_lines
