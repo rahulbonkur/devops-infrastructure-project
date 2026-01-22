@@ -84,21 +84,23 @@ pipeline {
         }
 
         stage('Create Inventory') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-            steps {
-                script {
-                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
-                        sh """
-                          sed "s/DOCKER_HOST_IP/${env.DOCKER_IP}/g" inventory_template.ini > inventory.ini
-                          sed -i "s/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g" inventory.ini
-                        """
-                    }
-                }
+    when {
+        expression { params.ACTION == 'apply' }
+    }
+    steps {
+        script {
+            dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                sh '''
+                  echo "### GENERATING INVENTORY ###"
+                  sed "s/DOCKER_HOST_IP/${env.DOCKER_IP}/g" inventory_template.ini > inventory.ini
+                  sed -i "s/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g" inventory.ini
+                  echo "### FINAL INVENTORY ###"
+                  cat inventory.ini
+                '''
             }
         }
-
+    }
+}
         stage('Deploy Docker App') {
             when {
                 expression { params.ACTION == 'apply' }
