@@ -15,6 +15,13 @@
           - python3-pip
         state: present
 
+    - name: Install Flask and Gunicorn
+      pip:
+        name:
+          - flask
+          - gunicorn
+        executable: pip3
+
     - name: Stop existing Gunicorn process (if any)
       shell: pkill -f gunicorn || true
       ignore_errors: yes
@@ -39,21 +46,6 @@
       fail:
         msg: "❌ recipe-app directory not found"
       when: not recipe_dir.stat.exists
-
-    - name: Verify requirements.txt exists
-      stat:
-        path: "{{ app_dir }}/requirements.txt"
-      register: req_file
-
-    - name: Fail if requirements.txt missing
-      fail:
-        msg: "❌ requirements.txt not found inside recipe-app"
-      when: not req_file.stat.exists
-
-    - name: Install Python dependencies
-      pip:
-        requirements: "{{ app_dir }}/requirements.txt"
-        executable: pip3
 
     - name: Start Flask app with Gunicorn
       shell: |
