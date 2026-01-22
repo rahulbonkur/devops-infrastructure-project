@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DevOps Infrastructure Project
 
 Complete DevOps infrastructure with Terraform, Jenkins, Docker, and Ansible.
@@ -59,3 +60,6 @@ devops-infrastructure-project/
 ## 📝 License
 
 MIT License
+=======
+# devops-infrastructure-project
+>>>>>>> 7a0c0ba5c045826303d95734f30b226fbe5c6164
