@@ -1,68 +1,185 @@
----
-- name: Deploy Python Food Recipe App
-  hosts: ansible_slave
-  become: yes
+pipeline {
+    agent any
 
-  vars:
-    app_root: /home/ec2-user/devops-infrastructure-project
-    app_dir: /home/ec2-user/devops-infrastructure-project/recipe-app
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        GITHUB_REPO = 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
+        PROJECT_DIR = '/var/lib/jenkins/workspace/devops-project'
+        SSH_KEY = '/var/lib/jenkins/.ssh/ansible-class.pem'
+    }
 
-  tasks:
-    - name: Install system dependencies
-      dnf:
-        name:
-          - python3
-          - python3-pip
-        state: present
+    stages {
 
-    - name: Install Flask and Gunicorn
-      pip:
-        name:
-          - flask
-          - gunicorn
-        executable: pip3
+        stage('Verify AWS Credentials') {
+            steps {
+                echo '=== Verifying AWS Credentials ==='
+                sh 'aws sts get-caller-identity'
+            }
+        }
 
-    - name: Stop existing Gunicorn process (if any)
-      shell: pkill -f gunicorn || true
-      ignore_errors: yes
+        stage('Clean Workspace') {
+            steps {
+                echo '=== Cleaning old workspace ==='
+                sh "rm -rf ${PROJECT_DIR}"
+            }
+        }
 
-    - name: Remove old project directory
-      file:
-        path: "{{ app_root }}"
-        state: absent
+        stage('Clone Repository') {
+            steps {
+                echo '=== Cloning GitHub Repository ==='
+                sh "git clone ${GITHUB_REPO} ${PROJECT_DIR}"
+            }
+        }
 
-    - name: Clone GitHub repository
-      git:
-        repo: 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
-        dest: "{{ app_root }}"
-        force: yes
+        stage('Terraform Init') {
+            steps {
+                echo '=== Terraform Init ==='
+                dir("${PROJECT_DIR}/terraform") {
+                    sh 'terraform init -upgrade'
+                }
+            }
+        }
 
-    - name: Verify recipe-app directory exists
-      stat:
-        path: "{{ app_dir }}"
-      register: recipe_dir
+        stage('Terraform Apply') {
+            steps {
+                echo '=== Terraform Apply ==='
+                dir("${PROJECT_DIR}/terraform") {
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
 
-    - name: Fail if recipe-app directory missing
-      fail:
-        msg: "❌ recipe-app directory not found"
-      when: not recipe_dir.stat.exists
+        stage('Wait for EC2 Instances') {
+            steps {
+                echo '=== Waiting for instances to boot ==='
+                sleep(time: 30, unit: 'SECONDS')
+            }
+        }
 
-    - name: Start Flask app with Gunicorn
-      shell: |
-        cd {{ app_dir }}
-        nohup gunicorn app:app --bind 0.0.0.0:5000 &
-      args:
-        executable: /bin/bash
+        stage('Fetch EC2 IPs') {
+            steps {
+                echo '=== Fetching EC2 IPs ==='
+                dir("${PROJECT_DIR}/terraform") {
+                    script {
+                        env.DOCKER_IP = sh(
+                            script: 'terraform output -raw docker_host_public_ip',
+                            returnStdout: true
+                        ).trim()
 
-    - name: Verify app is running
-      uri:
-        url: http://localhost:5000
-        status_code: 200
-      register: app_status
-      retries: 5
-      delay: 5
-      until: app_status.status == 200
+                        env.PYTHON_IP = sh(
+                            script: 'terraform output -raw ansible_slave_public_ip',
+                            returnStdout: true
+                        ).trim()
 
-    - name: Deployment success message
-      debug:
-        msg: "✅ Recipe App deployed successfully on port 5000"
+                        echo "Docker Host IP  : ${env.DOCKER_IP}"
+                        echo "Python Host IP  : ${env.PYTHON_IP}"
+                    }
+                }
+            }
+        }
+
+        stage('Generate Ansible Inventory') {
+            steps {
+                echo '=== Generating Inventory ==='
+                dir("${PROJECT_DIR}/ansible") {
+                    sh """
+                        rm -f inventory.ini
+                        sed 's/DOCKER_HOST_IP/${env.DOCKER_IP}/g' inventory_template.ini > inventory.ini
+                        sed -i 's/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g' inventory.ini
+                        echo '--- INVENTORY ---'
+                        cat inventory.ini
+                    """
+                }
+            }
+        }
+
+        stage('Verify Ansible Connectivity') {
+            steps {
+                echo '=== Verifying Ansible SSH Connectivity ==='
+                dir("${PROJECT_DIR}/ansible") {
+                    sh """
+                        ansible all -i inventory.ini -m ping \
+                        --private-key ${SSH_KEY}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Portfolio (Docker Host)') {
+            steps {
+                echo '=== Deploying Portfolio Website ==='
+                dir("${PROJECT_DIR}/ansible") {
+                    sh """
+                        ansible-playbook -i inventory.ini deploy_docker_app.yml \
+                        --private-key ${SSH_KEY}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Recipe App (Python Host)') {
+            steps {
+                echo '=== Deploying Recipe App ==='
+                dir("${PROJECT_DIR}/ansible") {
+                    sh """
+                        ansible-playbook -i inventory.ini deploy_python_app.yml \
+                        --private-key ${SSH_KEY}
+                    """
+                }
+            }
+        }
+
+        stage('Verify Applications') {
+            steps {
+                echo '=== Verifying Applications ==='
+                sh """
+                    echo 'Portfolio Website:'
+                    curl -I http://${env.DOCKER_IP} || true
+
+                    echo 'Recipe App:'
+                    curl -I http://${env.PYTHON_IP}:5000 || true
+                """
+            }
+        }
+
+        stage('Display URLs') {
+            steps {
+                echo """
+==================================================
+✅ DEPLOYMENT SUCCESSFUL
+==================================================
+
+🎨 Portfolio Website:
+http://${env.DOCKER_IP}
+
+🍛 Recipe Application:
+http://${env.PYTHON_IP}:5000
+
+==================================================
+"""
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '🎉 PIPELINE COMPLETED SUCCESSFULLY'
+        }
+        failure {
+            echo '''
+❌ PIPELINE FAILED
+
+Check:
+- ansible-class.pem exists at /var/lib/jenkins/.ssh/
+- Permissions: chmod 600 ansible-class.pem
+- EC2 Security Group allows:
+  - 22 (SSH)
+  - 80 (HTTP)
+  - 5000 (Flask)
+'''
+        }
+        always {
+            echo "Pipeline finished at: ${new Date()}"
+        }
+    }
+}
