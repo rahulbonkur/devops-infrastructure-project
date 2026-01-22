@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['apply', 'destroy'],
+            description: 'Apply or Destroy Infrastructure'
+        )
+    }
+
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
         GITHUB_REPO = 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
@@ -26,39 +34,58 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                echo '=== Cloning GitHub Repository ==='
                 sh "git clone ${GITHUB_REPO} ${PROJECT_DIR}"
             }
         }
 
         stage('Terraform Init') {
             steps {
-                echo '=== Terraform Init ==='
                 dir("${PROJECT_DIR}/terraform") {
                     sh 'terraform init -upgrade'
                 }
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Terraform Apply / Destroy') {
             steps {
-                echo '=== Terraform Apply ==='
                 dir("${PROJECT_DIR}/terraform") {
-                    sh 'terraform apply -auto-approve'
+                    script {
+                        if (params.ACTION == 'destroy') {
+                            echo '🔥 DESTROYING INFRASTRUCTURE'
+                            sh 'terraform destroy -auto-approve'
+                        } else {
+                            echo '🚀 APPLYING INFRASTRUCTURE'
+                            sh 'terraform apply -auto-approve'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Wait for EC2 Instances') {
+        /* 🚨 STOP PIPELINE AFTER DESTROY */
+        stage('Stop After Destroy') {
+            when {
+                expression { params.ACTION == 'destroy' }
+            }
             steps {
-                echo '=== Waiting for instances to boot ==='
+                echo '✅ Infrastructure destroyed successfully. Stopping pipeline.'
+            }
+        }
+
+        stage('Wait for EC2 Instances') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
+            steps {
                 sleep(time: 30, unit: 'SECONDS')
             }
         }
 
         stage('Fetch EC2 IPs') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Fetching EC2 IPs ==='
                 dir("${PROJECT_DIR}/terraform") {
                     script {
                         env.DOCKER_IP = sh(
@@ -70,23 +97,21 @@ pipeline {
                             script: 'terraform output -raw ansible_slave_public_ip',
                             returnStdout: true
                         ).trim()
-
-                        echo "Docker Host IP  : ${env.DOCKER_IP}"
-                        echo "Python Host IP  : ${env.PYTHON_IP}"
                     }
                 }
             }
         }
 
         stage('Generate Ansible Inventory') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Generating Inventory ==='
                 dir("${PROJECT_DIR}/ansible") {
                     sh """
                         rm -f inventory.ini
                         sed 's/DOCKER_HOST_IP/${env.DOCKER_IP}/g' inventory_template.ini > inventory.ini
                         sed -i 's/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g' inventory.ini
-                        echo '--- INVENTORY ---'
                         cat inventory.ini
                     """
                 }
@@ -94,68 +119,63 @@ pipeline {
         }
 
         stage('Verify Ansible Connectivity') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Verifying Ansible SSH Connectivity ==='
                 dir("${PROJECT_DIR}/ansible") {
-                    sh """
-                        ansible all -i inventory.ini -m ping \
-                        --private-key ${SSH_KEY}
-                    """
+                    sh "ansible all -i inventory.ini -m ping --private-key ${SSH_KEY}"
                 }
             }
         }
 
         stage('Deploy Portfolio (Docker Host)') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Deploying Portfolio Website ==='
                 dir("${PROJECT_DIR}/ansible") {
-                    sh """
-                        ansible-playbook -i inventory.ini deploy_docker_app.yml \
-                        --private-key ${SSH_KEY}
-                    """
+                    sh "ansible-playbook -i inventory.ini deploy_docker_app.yml --private-key ${SSH_KEY}"
                 }
             }
         }
 
         stage('Deploy Recipe App (Python Host)') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Deploying Recipe App ==='
                 dir("${PROJECT_DIR}/ansible") {
-                    sh """
-                        ansible-playbook -i inventory.ini deploy_python_app.yml \
-                        --private-key ${SSH_KEY}
-                    """
+                    sh "ansible-playbook -i inventory.ini deploy_python_app.yml --private-key ${SSH_KEY}"
                 }
             }
         }
 
         stage('Verify Applications') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
-                echo '=== Verifying Applications ==='
                 sh """
-                    echo 'Portfolio Website:'
                     curl -I http://${env.DOCKER_IP} || true
-
-                    echo 'Recipe App:'
                     curl -I http://${env.PYTHON_IP}:5000 || true
                 """
             }
         }
 
         stage('Display URLs') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
                 echo """
-==================================================
-✅ DEPLOYMENT SUCCESSFUL
-==================================================
+🎉 DEPLOYMENT SUCCESSFUL
 
-🎨 Portfolio Website:
+Portfolio:
 http://${env.DOCKER_IP}
 
-🍛 Recipe Application:
+Recipe App:
 http://${env.PYTHON_IP}:5000
-
-==================================================
 """
             }
         }
@@ -163,20 +183,10 @@ http://${env.PYTHON_IP}:5000
 
     post {
         success {
-            echo '🎉 PIPELINE COMPLETED SUCCESSFULLY'
+            echo "✅ PIPELINE SUCCESS: ${params.ACTION.toUpperCase()}"
         }
         failure {
-            echo '''
-❌ PIPELINE FAILED
-
-Check:
-- ansible-class.pem exists at /var/lib/jenkins/.ssh/
-- Permissions: chmod 600 ansible-class.pem
-- EC2 Security Group allows:
-  - 22 (SSH)
-  - 80 (HTTP)
-  - 5000 (Flask)
-'''
+            echo '❌ PIPELINE FAILED'
         }
         always {
             echo "Pipeline finished at: ${new Date()}"
