@@ -2,12 +2,10 @@
 - name: Deploy Python Food Recipe App
   hosts: ansible_slave
   become: yes
-  gather_facts: yes
 
   vars:
     app_root: /home/ec2-user/devops-infrastructure-project
     app_dir: /home/ec2-user/devops-infrastructure-project/recipe-app
-    venv_dir: /home/ec2-user/recipe-venv
 
   tasks:
     - name: Install system dependencies
@@ -15,7 +13,6 @@
         name:
           - python3
           - python3-pip
-          - git
         state: present
 
     - name: Stop existing Gunicorn process (if any)
@@ -33,57 +30,46 @@
         dest: "{{ app_root }}"
         force: yes
 
-    - name: Ensure recipe-app directory exists
+    - name: Verify recipe-app directory exists
       stat:
         path: "{{ app_dir }}"
       register: recipe_dir
 
-    - name: Fail if recipe-app directory is missing
+    - name: Fail if recipe-app directory missing
       fail:
-        msg: "❌ recipe-app directory not found. Check repo structure."
+        msg: "❌ recipe-app directory not found"
       when: not recipe_dir.stat.exists
 
-    - name: Ensure requirements.txt exists
+    - name: Verify requirements.txt exists
       stat:
         path: "{{ app_dir }}/requirements.txt"
       register: req_file
 
     - name: Fail if requirements.txt missing
       fail:
-        msg: "❌ requirements.txt not found inside recipe-app."
+        msg: "❌ requirements.txt not found inside recipe-app"
       when: not req_file.stat.exists
-
-    - name: Create Python virtual environment
-      command: python3 -m venv "{{ venv_dir }}"
-      args:
-        creates: "{{ venv_dir }}/bin/activate"
 
     - name: Install Python dependencies
       pip:
         requirements: "{{ app_dir }}/requirements.txt"
-        virtualenv: "{{ venv_dir }}"
+        executable: pip3
 
     - name: Start Flask app with Gunicorn
       shell: |
         cd {{ app_dir }}
-        {{ venv_dir }}/bin/gunicorn app:app \
-          --bind 0.0.0.0:5000 \
-          --workers 2 \
-          --daemon
-      register: gunicorn_output
+        nohup gunicorn app:app --bind 0.0.0.0:5000 &
+      args:
+        executable: /bin/bash
 
-    - name: Wait for application to start
-      pause:
-        seconds: 5
-
-    - name: Verify Recipe App is running
+    - name: Verify app is running
       uri:
         url: http://localhost:5000
         status_code: 200
-      register: health_check
+      register: app_status
       retries: 5
       delay: 5
-      until: health_check.status == 200
+      until: app_status.status == 200
 
     - name: Deployment success message
       debug:
