@@ -1,8 +1,6 @@
 - name: Deploy Python Food Recipe App
   hosts: ansible_slave
   become: yes
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Install required packages
       yum:
@@ -12,7 +10,7 @@
           - git
         state: present
 
-    - name: Stop existing application
+    - name: Stop existing gunicorn processes
       shell: pkill -f "gunicorn.*app:app" || true
       ignore_errors: yes
 
@@ -21,12 +19,12 @@
         path: /etc/systemd/system/recipe-app.service
         state: absent
 
-    - name: Remove old directory
+    - name: Remove old project directory
       file:
         path: /home/ec2-user/devops-infrastructure-project
         state: absent
 
-    - name: Clone repository
+    - name: Clone GitHub repository
       git:
         repo: 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
         dest: /home/ec2-user/devops-infrastructure-project
@@ -36,6 +34,7 @@
       pip:
         requirements: /home/ec2-user/devops-infrastructure-project/recipe-app/requirements.txt
         executable: pip3
+        extra_args: --ignore-installed
 
     - name: Create systemd service file
       copy:
@@ -50,6 +49,7 @@
           WorkingDirectory=/home/ec2-user/devops-infrastructure-project/recipe-app
           ExecStart=/usr/local/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
           Restart=always
+          RestartSec=5
 
           [Install]
           WantedBy=multi-user.target
@@ -67,23 +67,28 @@
     - name: Wait for application to start
       wait_for:
         port: 5000
-        delay: 5
+        delay: 3
         timeout: 30
 
     - name: Check service status
-      systemd:
-        name: recipe-app
+      shell: systemctl status recipe-app --no-pager
       register: service_status
-
-    - name: Show service status
-      debug:
-        msg: "Service is {{ service_status.status.ActiveState }}"
-
-    - name: Test app locally
-      shell: curl -s http://localhost:5000 | head -20
-      register: curl_output
       ignore_errors: yes
 
-    - name: Show app test
+    - name: Display service status
       debug:
-        var: curl_output.stdout_lines
+        msg: "{{ service_status.stdout_lines }}"
+
+    - name: Test app endpoint
+      uri:
+        url: http://localhost:5000
+        return_content: no
+        status_code: 200
+      register: health_check
+      retries: 3
+      delay: 5
+      until: health_check.status == 200
+
+    - name: Display success message
+      debug:
+        msg: "✅ Recipe app deployed successfully on port 5000"
