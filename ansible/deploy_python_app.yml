@@ -8,6 +8,7 @@
     app_dir: /home/ec2-user/devops-infrastructure-project/recipe-app
 
   tasks:
+
     - name: Install system dependencies
       dnf:
         name:
@@ -47,22 +48,27 @@
         msg: "❌ recipe-app directory not found"
       when: not recipe_dir.stat.exists
 
-    - name: Start Flask app with Gunicorn
+    - name: Start Flask app with Gunicorn (public bind)
       shell: |
         cd {{ app_dir }}
-        nohup gunicorn app:app --bind 0.0.0.0:5000 &
+        nohup gunicorn app:app \
+          --bind 0.0.0.0:5000 \
+          > gunicorn.log 2>&1 &
       args:
         executable: /bin/bash
+
+    - name: Wait for application port to be available
+      wait_for:
+        host: 127.0.0.1
+        port: 5000
+        delay: 5
+        timeout: 30
 
     - name: Verify app is running
       uri:
         url: http://localhost:5000
         status_code: 200
-      register: app_status
-      retries: 5
-      delay: 5
-      until: app_status.status == 200
 
     - name: Deployment success message
       debug:
-        msg: "✅ Recipe App deployed successfully on port 5000"
+        msg: "✅ Recipe App deployed successfully and accessible on port 5000"
