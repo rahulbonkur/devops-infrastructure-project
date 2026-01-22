@@ -1,94 +1,90 @@
+---
 - name: Deploy Python Food Recipe App
   hosts: ansible_slave
   become: yes
+  gather_facts: yes
+
+  vars:
+    app_root: /home/ec2-user/devops-infrastructure-project
+    app_dir: /home/ec2-user/devops-infrastructure-project/recipe-app
+    venv_dir: /home/ec2-user/recipe-venv
+
   tasks:
-    - name: Install required packages
-      yum:
+    - name: Install system dependencies
+      dnf:
         name:
           - python3
           - python3-pip
           - git
         state: present
 
-    - name: Stop existing gunicorn processes
-      shell: pkill -f "gunicorn.*app:app" || true
+    - name: Stop existing Gunicorn process (if any)
+      shell: pkill -f gunicorn || true
       ignore_errors: yes
-
-    - name: Remove old systemd service
-      file:
-        path: /etc/systemd/system/recipe-app.service
-        state: absent
 
     - name: Remove old project directory
       file:
-        path: /home/ec2-user/devops-infrastructure-project
+        path: "{{ app_root }}"
         state: absent
 
     - name: Clone GitHub repository
       git:
         repo: 'https://github.com/rahulbonkur/devops-infrastructure-project.git'
-        dest: /home/ec2-user/devops-infrastructure-project
+        dest: "{{ app_root }}"
         force: yes
+
+    - name: Ensure recipe-app directory exists
+      stat:
+        path: "{{ app_dir }}"
+      register: recipe_dir
+
+    - name: Fail if recipe-app directory is missing
+      fail:
+        msg: "❌ recipe-app directory not found. Check repo structure."
+      when: not recipe_dir.stat.exists
+
+    - name: Ensure requirements.txt exists
+      stat:
+        path: "{{ app_dir }}/requirements.txt"
+      register: req_file
+
+    - name: Fail if requirements.txt missing
+      fail:
+        msg: "❌ requirements.txt not found inside recipe-app."
+      when: not req_file.stat.exists
+
+    - name: Create Python virtual environment
+      command: python3 -m venv "{{ venv_dir }}"
+      args:
+        creates: "{{ venv_dir }}/bin/activate"
 
     - name: Install Python dependencies
       pip:
-        requirements: /home/ec2-user/devops-infrastructure-project/recipe-app/requirements.txt
-        executable: pip3
-        extra_args: --ignore-installed
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ venv_dir }}"
 
-    - name: Create systemd service file
-      copy:
-        dest: /etc/systemd/system/recipe-app.service
-        content: |
-          [Unit]
-          Description=Indian Food Recipe App
-          After=network.target
-
-          [Service]
-          User=ec2-user
-          WorkingDirectory=/home/ec2-user/devops-infrastructure-project/recipe-app
-          ExecStart=/usr/local/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
-          Restart=always
-          RestartSec=5
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Reload systemd daemon
-      systemd:
-        daemon_reload: yes
-
-    - name: Start and enable recipe app service
-      systemd:
-        name: recipe-app
-        state: restarted
-        enabled: yes
+    - name: Start Flask app with Gunicorn
+      shell: |
+        cd {{ app_dir }}
+        {{ venv_dir }}/bin/gunicorn app:app \
+          --bind 0.0.0.0:5000 \
+          --workers 2 \
+          --daemon
+      register: gunicorn_output
 
     - name: Wait for application to start
-      wait_for:
-        port: 5000
-        delay: 3
-        timeout: 30
+      pause:
+        seconds: 5
 
-    - name: Check service status
-      shell: systemctl status recipe-app --no-pager
-      register: service_status
-      ignore_errors: yes
-
-    - name: Display service status
-      debug:
-        msg: "{{ service_status.stdout_lines }}"
-
-    - name: Test app endpoint
+    - name: Verify Recipe App is running
       uri:
         url: http://localhost:5000
-        return_content: no
         status_code: 200
       register: health_check
-      retries: 3
+      retries: 5
       delay: 5
       until: health_check.status == 200
 
-    - name: Display success message
+    - name: Deployment success message
       debug:
-        msg: "✅ Recipe app deployed successfully on port 5000"
+        msg: "✅ Recipe App deployed successfully on port 5000"
