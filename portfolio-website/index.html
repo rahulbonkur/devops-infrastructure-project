@@ -1847,6 +1847,29 @@
             console.log('🚀 Portfolio loaded successfully!');
             console.log('💼 Deployed via Jenkins + Terraform + Docker + Ansible');
         </script>
+        <script>
+let lastTrailTime = 0;
+
+document.addEventListener('mousemove', (e) => {
+    if (window.innerWidth <= 768) return;
+
+    const now = Date.now();
+    if (now - lastTrailTime < 30) return; // throttle
+    lastTrailTime = now;
+
+    const trail = document.createElement('div');
+    trail.className = 'cursor-trail';
+    trail.style.left = `${e.clientX}px`;
+    trail.style.top = `${e.clientY}px`;
+
+    document.body.appendChild(trail);
+
+    setTimeout(() => {
+        trail.remove();
+    }, 600);
+});
+</script>
     </body>
 
     </html>
+
