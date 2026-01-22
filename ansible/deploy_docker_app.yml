@@ -1,0 +1,65 @@
+---
+- name: Deploy Dockerized UI/UX Portfolio Website
+  hosts: docker_host
+  become: yes
+  tasks:
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Docker Python module
+      pip:
+        name: docker
+        state: present
+        executable: pip3
+
+    - name: Stop existing container
+      docker_container:
+        name: portfolio-website
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove existing image
+      docker_image:
+        name: portfolio-website
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove existing directory
+      file:
+        path: /home/ec2-user/devops-infrastructure-project
+        state: absent
+
+    - name: Clone repository
+      git:
+        repo: 'https://github.com/YOUR_USERNAME/devops-infrastructure-project.git'
+        dest: /home/ec2-user/devops-infrastructure-project
+        force: yes
+
+    - name: Build Docker image
+      docker_image:
+        name: portfolio-website
+        build:
+          path: /home/ec2-user/devops-infrastructure-project/portfolio-website
+        source: build
+        state: present
+
+    - name: Run Docker container
+      docker_container:
+        name: portfolio-website
+        image: portfolio-website
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"
+
+    - name: Verify container
+      docker_container_info:
+        name: portfolio-website
+      register: result
+
+    - name: Show status
+      debug:
+        msg: "Container is {{ result.container.State.Status }}"

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Food Recipes for Bachelors</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 60px 30px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            font-size: 56px;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .header p {
+            font-size: 24px;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 50px 30px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 35px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .stat-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: #FF6B6B;
+            display: block;
+        }
+
+        .category-section {
+            margin-bottom: 60px;
+        }
+
+        .category-title {
+            font-size: 36px;
+            color: white;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .recipe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 35px;
+        }
+
+        .recipe-card {
+            background: white;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            transition: all 0.4s;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+        }
+
+        .recipe-header {
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+
+        .recipe-emoji {
+            font-size: 80px;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+        .recipe-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .recipe-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .recipe-meta span {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 15px;
+            border-radius: 20px;
+        }
+
+        .recipe-body {
+            padding: 30px;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .difficulty-easy {
+            background: #26DE81;
+            color: white;
+        }
+
+        .difficulty-medium {
+            background: #FFE66D;
+            color: #333;
+        }
+
+        .section-heading {
+            font-size: 18px;
+            font-weight: 700;
+            color: #FF6B6B;
+            margin: 20px 0 15px;
+        }
+
+        .ingredients-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .ingredients-list li {
+            padding: 10px 0;
+            border-bottom: 1px dashed #E0E0E0;
+            color: #555;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .ingredients-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #26DE81;
+            font-weight: 700;
+        }
+
+        .steps-list {
+            list-style: none;
+            counter-reset: steps;
+            padding: 0;
+        }
+
+        .steps-list li {
+            padding: 12px 0 12px 45px;
+            position: relative;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .steps-list li::before {
+            counter-increment: steps;
+            content: counter(steps);
+            position: absolute;
+            left: 0;
+            top: 10px;
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .tips-box {
+            background: #FFF3CD;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #FFC312;
+        }
+
+        .tips-box strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            background: #2D3436;
+            color: white;
+            text-align: center;
+            padding: 40px;
+            margin-top: 60px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 36px; }
+            .recipe-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍛 Indian Food Recipes for Bachelors</h1>
+        <p>Quick, Easy, and Delicious recipes!</p>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-icon">📖</div>
+                <span class="stat-number">{{ recipes|length }}</span>
+                <div>Total Recipes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <span class="stat-number">{{ categories|length }}</span>
+                <div>Categories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👨‍🍳</div>
+                <span class="stat-number">100%</span>
+                <div>Bachelor Friendly</div>
+            </div>
+        </div>
+
+        {% for category, recipe_list in categories.items() %}
+        <div class="category-section">
+            <h2 class="category-title">{{ category }}</h2>
+            <div class="recipe-grid">
+                {% for recipe in recipe_list %}
+                <div class="recipe-card">
+                    <div class="recipe-header">
+                        <span class="recipe-emoji">{{ recipe.image }}</span>
+                        <div class="recipe-name">{{ recipe.name }}</div>
+                        <div class="recipe-meta">
+                            <span>⏰ {{ recipe.time }}</span>
+                            <span>🍽️ {{ recipe.servings }}</span>
+                        </div>
+                    </div>
+                    <div class="recipe-body">
+                        <span class="difficulty-badge difficulty-{{ recipe.difficulty|lower }}">
+                            {{ recipe.difficulty }}
+                        </span>
+
+                        <div class="section-heading">📝 Ingredients</div>
+                        <ul class="ingredients-list">
+                            {% for ingredient in recipe.ingredients %}
+                            <li>{{ ingredient }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        <div class="section-heading">👨‍🍳 Steps</div>
+                        <ol class="steps-list">
+                            {% for step in recipe.steps %}
+                            <li>{{ step }}</li>
+                            {% endfor %}
+                        </ol>
+
+                        {% if recipe.tips %}
+                        <div class="tips-box">
+                            <strong>💡 Pro Tip:</strong>
+                            {{ recipe.tips }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Indian Food Recipes | Deployed via DevOps Pipeline</p>
+    </div>
+</body>
+</html>

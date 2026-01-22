@@ -1,0 +1,29 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/tfplan
+
+# Python
+recipe-app/__pycache__/
+recipe-app/*.pyc
+recipe-app/.env
+recipe-app/venv/
+
+# Ansible
+ansible/inventory.ini
+ansible/*.retry
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,78 @@
+---
+- name: Deploy Python Food Recipe App
+  hosts: ansible_slave
+  become: yes
+  tasks:
+    - name: Install packages
+      yum:
+        name:
+          - python3
+          - python3-pip
+          - git
+        state: present
+
+    - name: Stop existing app
+      shell: pkill -f "gunicorn.*app:app" || true
+      ignore_errors: yes
+
+    - name: Remove old service
+      file:
+        path: /etc/systemd/system/recipe-app.service
+        state: absent
+
+    - name: Remove old directory
+      file:
+        path: /home/ec2-user/devops-infrastructure-project
+        state: absent
+
+    - name: Clone repository
+      git:
+        repo: 'https://github.com/YOUR_USERNAME/devops-infrastructure-project.git'
+        dest: /home/ec2-user/devops-infrastructure-project
+        force: yes
+
+    - name: Install dependencies
+      pip:
+        requirements: /home/ec2-user/devops-infrastructure-project/recipe-app/requirements.txt
+        executable: pip3
+
+    - name: Create systemd service
+      copy:
+        dest: /etc/systemd/system/recipe-app.service
+        content: |
+          [Unit]
+          Description=Recipe App
+          After=network.target
+
+          [Service]
+          User=ec2-user
+          WorkingDirectory=/home/ec2-user/devops-infrastructure-project/recipe-app
+          ExecStart=/usr/local/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Start service
+      systemd:
+        name: recipe-app
+        state: restarted
+        enabled: yes
+
+    - name: Wait for app
+      wait_for:
+        port: 5000
+        delay: 5
+
+    - name: Check status
+      systemd:
+        name: recipe-app
+      register: result
+
+    - name: Show status
+      debug:
+        msg: "Service is {{ result.status.ActiveState }}"

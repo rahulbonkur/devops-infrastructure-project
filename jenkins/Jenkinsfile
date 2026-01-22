@@ -1,0 +1,112 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        GITHUB_REPO = 'https://github.com/YOUR_USERNAME/devops-infrastructure-project.git'
+    }
+    
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    echo '=== Cloning GitHub Repository ==='
+                    sh 'rm -rf /var/lib/jenkins/workspace/devops-project'
+                    sh 'git clone ${GITHUB_REPO} /var/lib/jenkins/workspace/devops-project'
+                }
+            }
+        }
+        
+        stage('Terraform Init') {
+            steps {
+                script {
+                    echo '=== Initializing Terraform ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/terraform') {
+                        sh 'terraform init -upgrade'
+                    }
+                }
+            }
+        }
+        
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    echo '=== Creating AWS Infrastructure ==='
+                    dir('/var/lib/jenkins/workspace/devops-project/terraform') {
+                        sh 'terraform apply -auto-approve'
+                    }
+                }
+            }
+        }
+        
+        stage('Get IPs') {
+            steps {
+                script {
+                    dir('/var/lib/jenkins/workspace/devops-project/terraform') {
+                        env.DOCKER_IP = sh(script: 'terraform output -raw docker_host_public_ip', returnStdout: true).trim()
+                        env.PYTHON_IP = sh(script: 'terraform output -raw ansible_slave_public_ip', returnStdout: true).trim()
+                        echo "Docker Host: ${env.DOCKER_IP}"
+                        echo "Python Host: ${env.PYTHON_IP}"
+                    }
+                }
+            }
+        }
+        
+        stage('Wait for Instances') {
+            steps {
+                script {
+                    echo '=== Waiting for instances ==='
+                    sleep(time: 90, unit: 'SECONDS')
+                }
+            }
+        }
+        
+        stage('Create Inventory') {
+            steps {
+                script {
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh """
+                            sed 's/DOCKER_HOST_IP/${env.DOCKER_IP}/g' inventory_template.ini > inventory.ini
+                            sed -i 's/ANSIBLE_SLAVE_IP/${env.PYTHON_IP}/g' inventory.ini
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Docker App') {
+            steps {
+                script {
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh 'ansible-playbook -i inventory.ini deploy_docker_app.yml'
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy Python App') {
+            steps {
+                script {
+                    dir('/var/lib/jenkins/workspace/devops-project/ansible') {
+                        sh 'ansible-playbook -i inventory.ini deploy_python_app.yml'
+                    }
+                }
+            }
+        }
+        
+        stage('Display URLs') {
+            steps {
+                script {
+                    echo """
+                    ==========================================
+                    ✅ DEPLOYMENT SUCCESSFUL!
+                    ==========================================
+                    🎨 Portfolio: http://${env.DOCKER_IP}
+                    🍛 Recipe App: http://${env.PYTHON_IP}:5000
+                    ==========================================
+                    """
+                }
+            }
+        }
+    }
+}
