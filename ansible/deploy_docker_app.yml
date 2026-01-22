@@ -2,12 +2,25 @@
 - name: Deploy Dockerized UI/UX Portfolio Website
   hosts: docker_host
   become: yes
+
   tasks:
     - name: Ensure Docker is running
       service:
         name: docker
         state: started
         enabled: yes
+
+    # 🔥 ADD THIS
+    - name: Install Python3 and pip
+      yum:
+        name:
+          - python3
+          - python3-pip
+        state: present
+
+    # 🔥 ADD THIS
+    - name: Upgrade pip
+      command: python3 -m pip install --upgrade pip
 
     - name: Install Docker Python module
       pip:
