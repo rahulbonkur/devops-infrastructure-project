@@ -66,9 +66,6 @@
             border-bottom: 1px solid var(--separator);
             padding: 80px 0 100px;
             text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
 
         .header-content {
@@ -600,25 +597,30 @@
         }
 
         // Add animation on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
+        // const observerOptions = {
+        //     threshold: 0.1,
+        //     rootMargin: '0px 0px -50px 0px'
+        // };
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
+        // const observer = new IntersectionObserver((entries) => {
+        //     entries.forEach(entry => {
+        //         if (entry.isIntersecting) {
+        //             entry.target.style.opacity = '1';
+        //             entry.target.style.transform = 'translateY(0)';
+        //         }
+        //     });
+        // }, observerOptions);
+
+        // document.querySelectorAll('.recipe-card').forEach(card => {
+        //     card.style.opacity = '0';
+        //     card.style.transform = 'translateY(20px)';
+        //     card.style.transition = 'opacity 0.6s, transform 0.6s';
+        //     observer.observe(card);
+        // });
 
         document.querySelectorAll('.recipe-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s, transform 0.6s';
-            observer.observe(card);
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
         });
 
         console.log('🍛 Indian Food Recipes App Loaded Successfully!');
@@ -627,3 +629,4 @@
 </body>
 
 </html>
+HTMLEOF
