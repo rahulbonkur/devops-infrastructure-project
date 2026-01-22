@@ -3,6 +3,10 @@
   hosts: docker_host
   become: yes
 
+  vars:
+    docker_venv: /opt/docker-venv
+    ansible_python_interpreter: /opt/docker-venv/bin/python
+
   tasks:
     - name: Ensure Docker is running
       service:
@@ -10,13 +14,23 @@
         state: started
         enabled: yes
 
-    - name: Install Python3, pip, and Docker SDK
-      yum:
+    - name: Install Python3 and venv tools
+      dnf:
         name:
           - python3
           - python3-pip
-          - python3-docker
+          - python3-virtualenv
         state: present
+
+    - name: Create virtualenv for Docker SDK
+      command: python3 -m venv {{ docker_venv }}
+      args:
+        creates: "{{ docker_venv }}/bin/activate"
+
+    - name: Install Docker SDK inside venv
+      pip:
+        name: docker
+        virtualenv: "{{ docker_venv }}"
 
     - name: Stop existing container
       docker_container:
@@ -47,7 +61,6 @@
         build:
           path: /home/ec2-user/devops-infrastructure-project/portfolio-website
         source: build
-        state: present
 
     - name: Run Docker container
       docker_container:
