@@ -1,4 +1,14 @@
 terraform {
+  backend "s3" {
+    bucket         = "rahul-devops-tf-state"
+    key            = "devops-infra/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = ""
+    encrypt        = true
+  }
+}
+
+terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
