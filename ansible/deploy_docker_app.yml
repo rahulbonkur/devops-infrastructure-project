@@ -2,10 +2,7 @@
 - name: Deploy Dockerized UI/UX Portfolio Website
   hosts: docker_host
   become: yes
-
-  vars:
-    docker_venv: /opt/docker-venv
-    ansible_python_interpreter: /opt/docker-venv/bin/python
+  gather_facts: yes
 
   tasks:
     - name: Ensure Docker is running
@@ -14,7 +11,7 @@
         state: started
         enabled: yes
 
-    - name: Install Python3 and venv tools
+    - name: Install Python3, pip, and venv tools
       dnf:
         name:
           - python3
@@ -23,14 +20,19 @@
         state: present
 
     - name: Create virtualenv for Docker SDK
-      command: python3 -m venv {{ docker_venv }}
+      command: python3 -m venv /opt/docker-venv
       args:
-        creates: "{{ docker_venv }}/bin/activate"
+        creates: /opt/docker-venv/bin/python
 
     - name: Install Docker SDK inside venv
       pip:
         name: docker
-        virtualenv: "{{ docker_venv }}"
+        virtualenv: /opt/docker-venv
+
+    # 🔥 SWITCH PYTHON AFTER VENV EXISTS
+    - name: Switch Ansible to use venv Python
+      set_fact:
+        ansible_python_interpreter: /opt/docker-venv/bin/python
 
     - name: Stop existing container
       docker_container:
