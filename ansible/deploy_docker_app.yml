@@ -1,6 +1,9 @@
+---
 - name: Deploy Dockerized UI/UX Portfolio Website
   hosts: docker_host
   become: yes
+  gather_facts: yes
+
   tasks:
     - name: Ensure Docker is running
       service:
@@ -23,16 +26,16 @@
       pause:
         seconds: 5
 
-    - name: Stop existing container
-      shell: docker stop portfolio-website 2>/dev/null || true
+    - name: Stop existing container (if any)
+      docker_container:
+        name: portfolio-website
+        state: absent
       ignore_errors: yes
 
-    - name: Remove existing container
-      shell: docker rm portfolio-website 2>/dev/null || true
-      ignore_errors: yes
-
-    - name: Remove existing image
-      shell: docker rmi portfolio-website 2>/dev/null || true
+    - name: Remove existing image (if any)
+      docker_image:
+        name: portfolio-website
+        state: absent
       ignore_errors: yes
 
     - name: Remove existing project directory
@@ -47,46 +50,49 @@
         force: yes
 
     - name: Build Docker image
-      shell: |
-        cd /home/ec2-user/devops-infrastructure-project/portfolio-website
-        docker build -t portfolio-website .
+      docker_image:
+        name: portfolio-website
+        build:
+          path: /home/ec2-user/devops-infrastructure-project/portfolio-website
+        source: build
       register: build_result
 
-    - name: Display build output
+    - name: Show Docker build result
       debug:
-        msg: "{{ build_result.stdout_lines }}"
+        msg: "Docker image built successfully"
 
     - name: Run Docker container
-      shell: |
-        docker run -d \
-          --name portfolio-website \
-          --restart always \
-          -p 80:80 \
-          portfolio-website
+      docker_container:
+        name: portfolio-website
+        image: portfolio-website
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"
       register: container_result
 
-    - name: Display container ID
+    - name: Show container ID
       debug:
-        msg: "Container started with ID: {{ container_result.stdout }}"
+        msg: "Container started with ID: {{ container_result.container.Id }}"
 
     - name: Verify container is running
-      shell: docker ps --filter name=portfolio-website --format "{{.Names}}\t{{.Status}}"
-      register: verify_result
+      docker_container_info:
+        name: portfolio-website
+      register: container_info
 
-    - name: Display container status
+    - name: Show container status
       debug:
-        msg: "{{ verify_result.stdout }}"
+        msg: "Container status: {{ container_info.container.State.Status }}"
 
     - name: Test website locally
       uri:
         url: http://localhost
-        return_content: no
         status_code: 200
       register: health_check
-      retries: 3
+      retries: 5
       delay: 5
       until: health_check.status == 200
 
-    - name: Display success message
+    - name: Deployment success message
       debug:
-        msg: "✅ Portfolio website deployed successfully on port 80"
+        msg: "✅ Portfolio website deployed successfully and accessible on port 80"
