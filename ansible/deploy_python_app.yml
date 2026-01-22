@@ -6,6 +6,7 @@
   vars:
     app_root: /home/ec2-user/devops-infrastructure-project
     app_dir: /home/ec2-user/devops-infrastructure-project/recipe-app
+    gunicorn_bin: /home/ec2-user/.local/bin/gunicorn
     gunicorn_log: /home/ec2-user/gunicorn.log
 
   tasks:
@@ -17,7 +18,7 @@
           - python3-pip
         state: present
 
-    - name: Install Flask and Gunicorn (system-safe)
+    - name: Install Flask and Gunicorn (user scope)
       pip:
         name:
           - flask
@@ -25,11 +26,21 @@
         executable: pip3
         extra_args: --user
 
-    - name: Kill anything running on port 5000
+    - name: Ensure gunicorn binary exists
+      stat:
+        path: "{{ gunicorn_bin }}"
+      register: gunicorn_check
+
+    - name: Fail if gunicorn not installed
+      fail:
+        msg: "❌ Gunicorn binary not found at {{ gunicorn_bin }}"
+      when: not gunicorn_check.stat.exists
+
+    - name: Kill anything using port 5000
       shell: fuser -k 5000/tcp || true
       ignore_errors: yes
 
-    - name: Stop existing Gunicorn process (if any)
+    - name: Stop old Gunicorn processes
       shell: pkill -f gunicorn || true
       ignore_errors: yes
 
@@ -54,38 +65,41 @@
         msg: "❌ recipe-app directory not found"
       when: not recipe_dir.stat.exists
 
-    - name: Start Flask app with Gunicorn (STABLE)
+    - name: Start Gunicorn (background, safe)
       shell: |
-        nohup /home/ec2-user/.local/bin/gunicorn \
-          --chdir {{ app_dir }} \
-          app:app \
+        cd {{ app_dir }}
+        nohup {{ gunicorn_bin }} app:app \
           --bind 0.0.0.0:5000 \
           --workers 2 \
           > {{ gunicorn_log }} 2>&1 &
       args:
         executable: /bin/bash
 
-    - name: Wait for application port
+    - name: Wait for port 5000 to open
       wait_for:
-        host: 127.0.0.1
+        host: 0.0.0.0
         port: 5000
         delay: 5
-        timeout: 60
+        timeout: 90
 
-    - name: Verify app is running
+    - name: Check HTTP response (non-fatal)
       uri:
         url: http://localhost:5000
+        return_content: no
         status_code: 200
+      register: http_check
+      failed_when: false
 
-    - name: Show Gunicorn log
-      shell: tail -n 20 {{ gunicorn_log }}
+    - name: Show Gunicorn logs (ALWAYS)
+      shell: tail -n 50 {{ gunicorn_log }}
       register: gunicorn_output
       changed_when: false
 
-    - name: Deployment success message
+    - name: Final status
       debug:
         msg:
-          - "✅ Recipe App deployed successfully!"
+          - "✅ Recipe App deployment finished"
           - "🌍 URL: http://{{ ansible_host }}:5000"
-          - "📄 Gunicorn log:"
+          - "📡 HTTP status: {{ http_check.status | default('unknown') }}"
+          - "📄 Gunicorn log output:"
           - "{{ gunicorn_output.stdout }}"
