@@ -1709,36 +1709,26 @@
             });
 
             // Cursor trail effect
-            let cursorTrail = [];
-            const MAX_TRAIL = 20;
+            let lastTrailTime = 0;
 
-            document.addEventListener('mousemove', (e) => {
-                if (window.innerWidth > 768) {
-                    const trail = document.createElement('div');
-                    trail.className = 'cursor-trail';
-                    trail.style.cssText = `
-                position: fixed;
-                left: ${e.clientX}px;
-                top: ${e.clientY}px;
-                width: 6px;
-                height: 6px;
-                background: rgba(253, 121, 168, 0.6);
-                border-radius: 50%;
-                pointer-events: none;
-                z-index: 9999;
-                transition: opacity 0.5s;
-            `;
-                    document.body.appendChild(trail);
+document.addEventListener('mousemove', (e) => {
+    if (window.innerWidth <= 768) return;
 
-                    cursorTrail.push(trail);
+    const now = Date.now();
+    if (now - lastTrailTime < 30) return; // throttle
+    lastTrailTime = now;
 
-                    if (cursorTrail.length > MAX_TRAIL) {
-                        const oldTrail = cursorTrail.shift();
-                        oldTrail.style.opacity = '0';
-                        setTimeout(() => oldTrail.remove(), 500);
-                    }
-                }
-            });
+    const trail = document.createElement('div');
+    trail.className = 'cursor-trail';
+    trail.style.left = `${e.clientX}px`;
+    trail.style.top = `${e.clientY}px`;
+
+    document.body.appendChild(trail);
+
+    setTimeout(() => {
+        trail.remove();
+    }, 600);
+});
 
             // Add animation to skill tags on hover
             document.querySelectorAll('.skill-tag').forEach((tag, index) => {
@@ -1872,4 +1862,5 @@ document.addEventListener('mousemove', (e) => {
     </body>
 
     </html>
+
 
