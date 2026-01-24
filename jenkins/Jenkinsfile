@@ -51,10 +51,10 @@ pipeline {
                 dir("${PROJECT_DIR}/terraform") {
                     script {
                         if (params.ACTION == 'destroy') {
-                            echo '🔥 DESTROYING INFRASTRUCTURE'
+                            echo 'DESTROYING INFRASTRUCTURE'
                             sh 'terraform destroy -auto-approve'
                         } else {
-                            echo '🚀 APPLYING INFRASTRUCTURE'
+                            echo 'APPLYING INFRASTRUCTURE'
                             sh 'terraform apply -auto-approve'
                         }
                     }
@@ -62,13 +62,12 @@ pipeline {
             }
         }
 
-        /* 🚨 STOP PIPELINE AFTER DESTROY */
         stage('Stop After Destroy') {
             when {
                 expression { params.ACTION == 'destroy' }
             }
             steps {
-                echo '✅ Infrastructure destroyed successfully. Stopping pipeline.'
+                echo 'Infrastructure destroyed successfully. Stopping pipeline.'
             }
         }
 
@@ -169,7 +168,7 @@ pipeline {
             }
             steps {
                 echo """
-🎉 DEPLOYMENT SUCCESSFUL
+DEPLOYMENT SUCCESSFUL
 
 Portfolio:
 http://${env.DOCKER_IP}
@@ -183,10 +182,10 @@ http://${env.PYTHON_IP}:5000
 
     post {
         success {
-            echo "✅ PIPELINE SUCCESS: ${params.ACTION.toUpperCase()}"
+            echo "PIPELINE SUCCESS: ${params.ACTION.toUpperCase()}"
         }
         failure {
-            echo '❌ PIPELINE FAILED'
+            echo 'PIPELINE FAILED'
         }
         always {
             echo "Pipeline finished at: ${new Date()}"
